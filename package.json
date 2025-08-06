@@ -1,7 +1,21 @@
 {
-  "type": "module",
+  "name": "discord-api-server",
+  "version": "1.2.0",
+  "description": "Discord guild info API server",
+  "main": "server_info.js",
+  "scripts": {
+    "start": "node server_info.js",
+    "dev": "nodemon server_info.js"
+  },
+  "keywords": ["discord", "api", "guild", "server"],
+  "author": "아바",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.14.1",
+    "discord.js": "^14.11.0",
     "dotenv": "^16.3.1"
-  }
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "type": "module"
 }
