@@ -5,47 +5,43 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildEmojisAndStickers
-  ]
+    GatewayIntentBits.GuildEmojisAndStickers,
+  ],
 });
 
 let isReady = false;
 let guildCache = null;
 
-if (!client.isReady()) {
-  client.login(process.env.DISCORD_TOKEN).catch(console.error);
+async function initClient() {
+  if (isReady) return;
+  await client.login(process.env.DISCORD_TOKEN);
   client.once('ready', async () => {
-    try {
-      const guild = await client.guilds.fetch(process.env.GUILD_ID);
-      await guild.fetch();
-      guildCache = guild;
-      isReady = true;
-      console.log('Discord client ready');
-    } catch (err) {
-      console.error('Guild fetch failed:', err);
-    }
+    guildCache = await client.guilds.fetch(process.env.GUILD_ID);
+    isReady = true;
   });
 }
 
 export default async function handler(req, res) {
-  if (!isReady || !guildCache) {
-    return res.status(503).json({ error: 'Guild not ready' });
+  if (!isReady) {
+    await initClient();
+    if (!isReady) {
+      return res.status(503).json({ error: 'Server is initializing, please try again later.' });
+    }
   }
 
   try {
     const guild = guildCache;
     const members = await guild.members.fetch();
     const onlineCount = members.filter(
-      m => m.presence && m.presence.status !== 'offline'
+      (member) => member.presence && member.presence.status !== 'offline'
     ).size;
-
     const owner = await guild.fetchOwner();
 
-    const data = {
+    res.status(200).json({
       id: guild.id,
       name: guild.name,
       icon: guild.iconURL({ dynamic: true, size: 256 }),
-      description: guild.description ?? null,
+      description: guild.description || null,
       createdAt: guild.createdAt,
       memberCount: members.size,
       onlineCount,
@@ -53,28 +49,25 @@ export default async function handler(req, res) {
       ownerTag: owner.user.tag,
       boostCount: guild.premiumSubscriptionCount,
       boostLevel: guild.premiumTier,
-      roles: guild.roles.cache.map(role => ({
+      roles: guild.roles.cache.map((role) => ({
         id: role.id,
         name: role.name,
         color: role.hexColor,
-        position: role.position
+        position: role.position,
       })),
-      emojis: guild.emojis.cache.map(emoji => ({
+      emojis: guild.emojis.cache.map((emoji) => ({
         id: emoji.id,
         name: emoji.name,
         animated: emoji.animated,
-        url: emoji.url
+        url: emoji.url,
       })),
-      channels: guild.channels.cache.map(channel => ({
+      channels: guild.channels.cache.map((channel) => ({
         id: channel.id,
         name: channel.name,
-        type: channel.type
-      }))
-    };
-
-    res.status(200).json(data);
-  } catch (err) {
-    console.error('Error fetching server info:', err);
-    res.status(500).json({ error: 'Failed to fetch server info' });
+        type: channel.type,
+      })),
+    });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch server information.' });
   }
 }
