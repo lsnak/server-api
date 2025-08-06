@@ -1,7 +1,4 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const client = new Client({
   intents: [
@@ -15,18 +12,20 @@ const client = new Client({
 let isReady = false;
 let guildCache = null;
 
-client.once('ready', async () => {
-  try {
-    const guild = await client.guilds.fetch(process.env.GUILD_ID);
-    await guild.fetch();
-    guildCache = guild;
-    isReady = true;
-  } catch (err) {
-    console.error('Guild fetch failed:', err);
-  }
-});
-
-client.login(process.env.DISCORD_TOKEN);
+if (!client.isReady()) {
+  client.login(process.env.DISCORD_TOKEN).catch(console.error);
+  client.once('ready', async () => {
+    try {
+      const guild = await client.guilds.fetch(process.env.GUILD_ID);
+      await guild.fetch();
+      guildCache = guild;
+      isReady = true;
+      console.log('Discord client ready');
+    } catch (err) {
+      console.error('Guild fetch failed:', err);
+    }
+  });
+}
 
 export default async function handler(req, res) {
   if (!isReady || !guildCache) {
@@ -49,7 +48,7 @@ export default async function handler(req, res) {
       description: guild.description ?? null,
       createdAt: guild.createdAt,
       memberCount: members.size,
-      onlineCount: onlineCount,
+      onlineCount,
       ownerId: owner.id,
       ownerTag: owner.user.tag,
       boostCount: guild.premiumSubscriptionCount,
