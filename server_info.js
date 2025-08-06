@@ -1,13 +1,7 @@
-// Copyright 2025 " 아바 "
-
-import express from 'express';
 import { Client, GatewayIntentBits } from 'discord.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
-
-const app = express();
-const port = process.env.PORT || 3000;
 
 const client = new Client({
   intents: [
@@ -18,22 +12,24 @@ const client = new Client({
   ]
 });
 
+let isReady = false;
 let guildCache = null;
 
 client.once('ready', async () => {
-  console.log(`Logged in as ${client.user.tag}`);
-
   try {
     const guild = await client.guilds.fetch(process.env.GUILD_ID);
     await guild.fetch();
     guildCache = guild;
+    isReady = true;
   } catch (err) {
-    console.error('Failed to fetch guild:', err);
+    console.error('Guild fetch failed:', err);
   }
 });
 
-app.get('/api/server-info', async (req, res) => {
-  if (!guildCache) {
+client.login(process.env.DISCORD_TOKEN);
+
+export default async function handler(req, res) {
+  if (!isReady || !guildCache) {
     return res.status(503).json({ error: 'Guild not ready' });
   }
 
@@ -74,26 +70,12 @@ app.get('/api/server-info', async (req, res) => {
         id: channel.id,
         name: channel.name,
         type: channel.type
-      })),
+      }))
     };
 
-    res.json(data);
+    res.status(200).json(data);
   } catch (err) {
     console.error('Error fetching server info:', err);
     res.status(500).json({ error: 'Failed to fetch server info' });
   }
-});
-
-client.login(process.env.DISCORD_TOKEN);
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
-
-
-client.login(process.env.DISCORD_TOKEN);
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
-// Made by " 아바 "
+}
